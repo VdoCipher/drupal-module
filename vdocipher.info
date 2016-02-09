@@ -1,1 +1,6 @@
-name = vdocipher
+name = VdoCipher
+description = Embed vdocipher videos
+core = 7.x
+
+; NEW LINE
+configure = admin/config/content/vdocipher
