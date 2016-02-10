@@ -46,7 +46,7 @@ function vdo_shortcode_process( &$text ) {
 			'video'=>$attrs['id'],
 		);
 		$height = (isset($attrs['height'])) ? $attrs['height'] : variable_get('vdo_default_height' , 720);;
-		$width = (isset($attrs['width'])) ? $attrs['width'] : variable_get('vdo_default_width' , 720);;
+		$width = (isset($attrs['width'])) ? $attrs['width'] : variable_get('vdo_default_width' , 1280);;
         $url		=	"https://api.vdocipher.com/v2/otp/?video=" . $params['video'];
 		$data		=	http_build_query(array(
 			'clientSecretKey'	=>	$access_key
@@ -122,7 +122,7 @@ function vdocipher_form($form, &$form_state) {
   $form['vdo_default_width'] = array(
     '#type' => 'textfield',
     '#title' => t('Default width'),
-    '#default_value' => variable_get('vdo_default_width', 720),
+    '#default_value' => variable_get('vdo_default_width', 1280),
     '#size' => 4,
     '#maxlength' => 4,
     '#minlength' => 2,
@@ -132,7 +132,7 @@ function vdocipher_form($form, &$form_state) {
   $form['vdo_default_height'] = array(
     '#type' => 'textfield',
     '#title' => t('Default height'),
-    '#default_value' => variable_get('vdo_default_height', 1280),
+    '#default_value' => variable_get('vdo_default_height', 720),
     '#size' => 4,
     '#maxlength' => 4,
     '#minlength' => 2,
