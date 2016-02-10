@@ -1,0 +1,3 @@
+# ignore the vi temp files
+*.swp
+*.swo
