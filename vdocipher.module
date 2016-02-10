@@ -29,8 +29,14 @@ function vdocipher_help($path, $arg){
 
 function vdocipher_node_view($node, $view_mode, $langcode)
 {
+	if (!is_array($node->content)) {
+		return true;
+	}
 	foreach ($node->content as $key=>&$value) {
 		if ($key != 'body' && !preg_match('/^field_/', $key)) {
+			continue;
+		}
+		if (!isset($value['#items'])) {
 			continue;
 		}
 		for ($i=0; $i<count($value['#items']); $i++) {
