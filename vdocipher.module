@@ -60,14 +60,18 @@ function vdo_shortcode_process( &$text ) {
 			'data'		=>	$data,
 			'max_redirects'=>	2
 		));
-		if ($OTP->code != 200) {
-			return $OTP->data;
+		$otp_obj = json_decode($OTP->data);
+		if (is_null($otp_obj)) {
+			return "Video playback can not be authenticated." . $OTP->data;
 		}
-		$OTP = json_decode($OTP->data)->otp;
-		if (is_null(json_decode($OTP))) {
-			return "Video playback can not be authenticated.";
+		if ($OTP->code != 200 && isset($otp_obj->error)) {
+			return $otp_obj->error;
 		}
-		$OTP = json_decode($OTP)->otp;
+		$otp_obj = json_decode($OTP->data);
+		if (is_null($otp_obj) || !isset($otp_obj->otp)) {
+			return "Video playback can not be authenticated." . $OTP->data;
+		}
+		$OTP = $otp_obj->otp;
 		$output = <<<EOF
 <div id="vdo$OTP" style="height:400px;width:640px;max-width:100%;"></div>
 <script>
