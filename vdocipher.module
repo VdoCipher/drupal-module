@@ -1,0 +1,154 @@
+<?php
+
+/**
+ * @file
+ * A plugin module that parses content detect vdo shortcodes and render the corresponding video player
+ */
+
+/**
+ * Implements hook_help().
+ *
+ * Displays help and module information.
+ *
+ * @param path 
+ *   Which path of the site we're using to display help
+ * @param arg 
+ *   Array that holds the current path as returned from arg() function
+ */
+function vdocipher_help($path, $arg){
+	switch ($path) {
+		case 'admin/help#vdocipher':
+			return '<p>' . t("Embeds your vdocipher video inside Drupal nodes.") . '</p>';
+			break;
+		
+		case 'admin/config/content/vdocipher':
+			return '<p>' . t("Add API key to complete module set up") . '</p>';
+			break;
+	}
+}
+
+function vdocipher_node_view($node, $view_mode, $langcode)
+{
+	vdo_shortcode_process($node->content['body'][0]['#markup']);
+}
+
+function vdo_shortcode_process( &$text ) {
+	$text = preg_replace_callback( '/\[vdo\s+([A-Za-z0-9\=\s]+)\]/' , function($matches){
+		if (is_null(variable_get('vdocipher_api_key'))) {
+			return "Plugin not set properly. Please enter API key.";
+		}
+		$access_key = variable_get('vdocipher_api_key');
+		$attrs = [];
+		$output = preg_replace_callback( '/\b([a-zA-Z0-9]+)\=([A-Za-z0-9]+)\b/' , function($matches) use(&$attrs){
+				$attrs[$matches[1]] = $matches[2];
+			} , $matches[1]);
+		$params = array(
+			'video'=>$attrs['id'],
+		);
+		$height = (isset($attrs['height'])) ? $attrs['height'] : variable_get('vdo_default_height' , 720);;
+		$width = (isset($attrs['width'])) ? $attrs['width'] : variable_get('vdo_default_width' , 720);;
+        $url		=	"https://api.vdocipher.com/v2/otp/?video=" . $params['video'];
+		$data		=	http_build_query(array(
+			'clientSecretKey'	=>	$access_key
+		));
+		$headers = array(
+			'Content-Type'	=>	'application/x-www-form-urlencoded'
+		);
+		$OTP = drupal_http_request($url, array(
+			'headers'	=>	$headers,
+			'method'	=>	'POST',
+			'data'		=>	$data,
+			'max_redirects'=>	2
+		));
+		if ($OTP->code != 200) {
+			return $OTP->data;
+		}
+		$OTP = json_decode($OTP->data)->otp;
+		if (is_null(json_decode($OTP))) {
+			return "Video playback can not be authenticated.";
+		}
+		$OTP = json_decode($OTP)->otp;
+		$output = <<<EOF
+<div id="vdo$OTP" style="height:400px;width:640px;max-width:100%;"></div>
+<script>
+	(function(v,i,d,e,o){v[o]=v[o]||{}; v[o].add = v[o].add || function V(a){ (v[o].d=v[o].d||[]).push(a);};
+	if(!v[o].l) { v[o].l=1*new Date(); a=i.createElement(d), m=i.getElementsByTagName(d)[0];
+	a.async=1; a.src=e; m.parentNode.insertBefore(a,m);}
+	})(window,document,'script','//de122v0opjemw.cloudfront.net/vdo.js','vdo');
+	vdo.add({
+		o: "$OTP",
+	});
+</script>
+EOF;
+		return $output;
+	}, $text );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function vdocipher_menu() {
+  $items = array();
+
+  $items['admin/config/content/vdocipher'] = array(
+    'title' => 'VdoCipher Plugin Settings',
+    'description' => 'Configuration for VdoCipher module',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('vdocipher_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+
+/**
+ * Page callback: VdoCipher settings
+ *
+ * @see vdocipher_menu()
+ */
+function vdocipher_form($form, &$form_state) {
+  $form['vdocipher_api_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('API Secret Key'),
+    '#default_value' => variable_get('vdocipher_api_key'),
+    '#size' => 64,
+    '#maxlength' => 64,
+    '#minlength' => 64,
+    '#description' => t('The API secret key for vdocipher account.'),
+    '#required' => TRUE,
+  );
+  $form['vdo_default_width'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default width'),
+    '#default_value' => variable_get('vdo_default_width', 720),
+    '#size' => 4,
+    '#maxlength' => 4,
+    '#minlength' => 2,
+    '#description' => t('Default width of video.'),
+    '#required' => TRUE,
+  );
+  $form['vdo_default_height'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default height'),
+    '#default_value' => variable_get('vdo_default_height', 1280),
+    '#size' => 4,
+    '#maxlength' => 4,
+    '#minlength' => 2,
+    '#description' => t('Default height of video.'),
+    '#required' => TRUE,
+  );
+  $form['watermark'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Watermark code'),
+    '#default_value' => variable_get('watermark_code'),
+    '#rows' => 4,
+    '#columns' => 4,
+    '#description' => t('Watermark code. This needs to be in a structured format as described in https://www.vdocipher.com/blog/2014/12/add-text-to-videos-with-watermark/'),
+    '#required' => FALSE,
+  );
+
+  return system_settings_form($form);
+}
+# vim: set filetype=php; set syntax=php; set expandtab; set tabstop=2; set shiftwidth=2
